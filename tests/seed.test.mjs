@@ -3,7 +3,7 @@
 // message_id: inherit its thread; else a new thread). A fake encodes our own assumption, so
 // these prove the seeder's logic only; the live run's `verify` is the proof on the artifact.
 // Usage: node tests/seed.test.mjs <case>. Exit 0 = pass.
-import { MESSAGES } from "../seed/corpus.mjs";
+import { MESSAGES, SEED_FROM } from "../seed/corpus.mjs";
 import { validate, seed, verify, sendBody, presence } from "../scripts/seed.mjs";
 
 function fakeDemo({ semantic = true } = {}) {
@@ -84,6 +84,8 @@ const cases = {
     const inv = sendBody(MESSAGES.find((m) => m.key === "invoice-1"));
     const pdf = Buffer.from(inv.attachments[0].content, "base64").toString("utf8");
     return reply.headers["In-Reply-To"] === "<abc@cf.example>" && !("In-Reply-To" in inv.headers)
+      && reply.from.address === SEED_FROM && reply.from.name === "Relay (ops agent)"
+      && reply.reply_to === "relay.agent@posternonline.com"
       && pdf.startsWith("%PDF-1.4") && pdf.trimEnd().endsWith("%%EOF") && reply.text.includes("Synthetic message");
   },
   "verify-fails-without-vectors": async () => {

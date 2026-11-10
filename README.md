@@ -52,7 +52,11 @@ companies, orders and codes in it are invented. Every message ends with a line t
 
 **How it gets there: the real inbound path, never a database insert.** The `seed` workflow
 (`.github/workflows/seed.yml`) runs `scripts/seed.mjs send`. The script sends each message
-with the Cloudflare Email Sending REST API to an address on `posternonline.com`. Email Routing
+with the Cloudflare Email Sending REST API to an address on `posternonline.com`. Every message
+is sent from `demo-seed@skyphusion.org`, because `posternonline.com` is not onboarded to Email
+Sending and onboarding it would write new DNS to the demo zone. Each message carries its
+persona's display name (for example "Example Cloud Billing"), and Reply-To is that persona's
+`posternonline.com` address, so a reply stays inside the demo. Email Routing
 delivers it to the demo Worker's `email()` handler, and ingest, threading, FTS and Vectorize run
 exactly as they do for any sender. The REST API does not return the Message-ID it generates. So
 after each send the script reads the mailbox through the demo's read API until the message
@@ -64,7 +68,7 @@ that a reply puts in `In-Reply-To`. Threads are built by postern's own thread re
 - By hand: Actions, `seed`, Run workflow. `send` (the default) sends what is missing and then
   verifies. `check` reports only. `verify` asserts only.
 - Weekly, Mondays 06:17 UTC. The script is idempotent. It skips a message that is already
-  stored (same sender address and subject, counted in order), so the weekly run sends nothing
+  stored (same subject from `demo-seed@skyphusion.org`, counted in order), so the weekly run sends nothing
   unless the set was removed. The demo token is read-scoped, so visitors cannot delete mail.
   The weekly run exists to restore the set after an operator wipe, and it costs one mailbox
   read a week. It never deletes anything. The statement that nothing deletes demo
@@ -78,13 +82,13 @@ search returns a hit (so Vectorize holds vectors).
 
 **Secrets** (repository secrets, never in this repo):
 
-- `CF_EMAIL_SEND_TOKEN`: a Cloudflare token that can only send through Email Sending on this
-  account. Only the `send` step sees it.
+- `CF_EMAIL_SEND_TOKEN`: Cloudflare token `postern-demo-seed`, account-scoped Email Sending
+  Write (Cloudflare offers no send-only or per-zone grant). Only the `send` step sees it.
 - `POSTERN_DEMO_READ_TOKEN`: the demo's public read token, the one published in the postern
   README.
 
 **Change the seed set.** Edit `seed/corpus.mjs`. `npm test` validates it: 20 to 40 messages,
-unique keys, a parent always comes before its reply, every address is on `posternonline.com`,
+unique keys, a parent always comes before its reply, every persona and recipient address is on `posternonline.com`,
 and there are no em-dashes or en-dashes. A new message is sent on the next run. To replace an
 existing message, bump `SEED_VERSION` and change its subject; the old copy stays in the
 mailbox until an operator removes it.

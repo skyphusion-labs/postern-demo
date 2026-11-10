@@ -23,7 +23,7 @@
 //      DEMO_URL (default https://demo.posternonline.com). Account id comes from wrangler.jsonc.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { MESSAGES, SEED_DOMAIN, SEED_VERSION, FOOTER } from "../seed/corpus.mjs";
+import { MESSAGES, SEED_DOMAIN, SEED_FROM, SEED_VERSION, FOOTER } from "../seed/corpus.mjs";
 
 const DASHES = /[\u2013\u2014]/;
 
@@ -37,6 +37,9 @@ const addrOf = (p) => (typeof p === "string" ? p : p.address);
 /** Corpus rules. Returns a list of error strings; empty means valid. */
 export function validate(messages, domain = SEED_DOMAIN) {
   const errs = [];
+  if (!/^[a-z0-9.-]+@[a-z0-9.-]+$/.test(SEED_FROM) || SEED_FROM.endsWith(`@${domain}`)) {
+    errs.push(`SEED_FROM ${SEED_FROM} must be an address on an Email Sending domain, not ${domain}`);
+  }
   const seen = new Set();
   const threadOf = new Map();
   const pairThread = new Map();
@@ -51,20 +54,20 @@ export function validate(messages, domain = SEED_DOMAIN) {
       if (!a || !a.toLowerCase().endsWith(`@${domain}`)) errs.push(`${m.key}: address ${a} is not on ${domain}`);
     }
     if (!m.subject || !m.text) errs.push(`${m.key}: subject and text are required`);
-    const pair = `${addrOf(m.from).toLowerCase()}\n${m.subject}`;
+    const pair = `${SEED_FROM}\n${m.subject}`;
     const t = threadOf.get(m.key);
-    if (pairThread.has(pair) && pairThread.get(pair) !== t) errs.push(`${m.key}: sender+subject repeats outside its thread`);
+    if (pairThread.has(pair) && pairThread.get(pair) !== t) errs.push(`${m.key}: subject repeats outside its thread`);
     pairThread.set(pair, t);
     if (DASHES.test(JSON.stringify(m))) errs.push(`${m.key}: contains an em-dash or en-dash`);
   }
   return errs;
 }
 
-/** Occurrence-indexed identity: the nth message from this sender with this subject. */
+/** Occurrence-indexed identity: the nth message from SEED_FROM with this subject. */
 export function identities(messages) {
   const n = new Map();
   return messages.map((m) => {
-    const pair = `${addrOf(m.from).toLowerCase()}\n${m.subject}`;
+    const pair = `${SEED_FROM}\n${m.subject}`;
     const i = n.get(pair) ?? 0;
     n.set(pair, i + 1);
     return { pair, nth: i };
@@ -92,7 +95,8 @@ export function presence(messages, items) {
 /** The Email Sending REST body for one message. */
 export function sendBody(m, parentId) {
   const body = {
-    from: { address: m.from.address, name: m.from.name },
+    from: { address: SEED_FROM, name: m.from.name },
+    reply_to: m.from.address,
     to: m.to,
     subject: m.subject,
     text: m.text + FOOTER,

@@ -4,17 +4,23 @@
 // the demo domain, so each one arrives through the real inbound path (Email Routing, then
 // the Worker email() handler, then ingest, FTS and Vectorize).
 //
+// Every message is SENT FROM one address, SEED_FROM, on a domain already onboarded to Email
+// Sending (the demo domain is not, and onboarding it writes zone DNS). The persona below sets
+// the display name, and its posternonline.com address becomes Reply-To, so a reply from the
+// webmail lands back in the demo.
+//
 // Rules the validator in scripts/seed.mjs enforces:
 // - `key` is unique, and a `parent` names an EARLIER key (a reply threads onto it).
-// - every `from` and `to` address is on SEED_DOMAIN (Email Sending only sends from an
-//   onboarded domain, and Email Routing only delivers to the demo zone).
-// - (from address, subject) pairs may repeat only inside one thread; the seeder tells
-//   copies apart by their order.
+// - every persona, `to` and `cc` address is on SEED_DOMAIN (Email Routing delivers only to
+//   the demo zone).
+// - a subject may repeat only inside one thread (every message has the same sender address,
+//   so the seeder identifies a message by subject, and tells copies apart by their order).
 // - no em-dash or en-dash anywhere.
 
 export const SEED_VERSION = "v1";
 export const SEED_DOMAIN = "posternonline.com";
 export const SEED_TO = `demo@${SEED_DOMAIN}`;
+export const SEED_FROM = "demo-seed@skyphusion.org";
 
 export const FOOTER =
   "\n\n--\nSynthetic message seeded into the public postern demo. The people and companies in it are invented.";
