@@ -8,7 +8,7 @@ case_() { if [ "$2" = 0 ]; then pass=$((pass+1)); r=pass; else fail=$((fail+1));
 work="$(mktemp -d)"
 pvbak="$work/POSTERN_VERSION"
 cp POSTERN_VERSION "$pvbak"
-trap 'cp "$pvbak" POSTERN_VERSION; rm -rf "$work"' EXIT
+trap 'cp "$pvbak" POSTERN_VERSION; [ -f "$work/POSTERN_COMMIT" ] && cp "$work/POSTERN_COMMIT" POSTERN_COMMIT; rm -rf "$work"' EXIT
 
 # 1. fetch.sh refuses a pin that is not a vX.Y.Z tag.
 echo latest > POSTERN_VERSION
@@ -42,7 +42,19 @@ if [ "$rc" -eq 1 ] && [ "$fails" = 4 ]; then r=0; else r=1; fi; case_ parity-cat
 # 5. A wrangler dry run bundles the Worker with this config.
 npx wrangler deploy --dry-run --outdir .wrangler/dry >/dev/null 2>&1; case_ dry-run-bundles $?
 
-# 6. The deploy script carries the migration gate before the apply.
+# 6. fetch.sh refuses a commit pin that does not match the tag.
+cp POSTERN_COMMIT "$work/POSTERN_COMMIT"
+printf '%040d\n' 0 > POSTERN_COMMIT
+bash scripts/fetch.sh >/dev/null 2>&1; rc=$?
+cp "$work/POSTERN_COMMIT" POSTERN_COMMIT
+bash scripts/fetch.sh >/dev/null 2>&1 || true
+if [ "$rc" -ne 0 ]; then r=0; else r=1; fi; case_ refuses-mismatched-commit-pin "$r"
+
+# 7. The deploy script verifies the uploaded version id is the one serving.
+# shellcheck disable=SC2016 # literal text to find in deploy.sh
+if grep -q 'verify-worker-deployment.mjs "\$work/deployment.json" "\$version_id"' scripts/deploy.sh && [ -f postern/.github/scripts/verify-worker-deployment.mjs ]; then r=0; else r=1; fi; case_ deploy-verifies-artifact "$r"
+
+# 8. The deploy script carries the migration gate before the apply.
 gate_line="$(grep -n 'd1-migration-gate.mjs postern/inbound/migrations' scripts/deploy.sh | head -1 | cut -d: -f1)"
 apply_line="$(grep -n 'migrations apply DB' scripts/deploy.sh | head -1 | cut -d: -f1)"
 if [ -n "$gate_line" ] && [ -n "$apply_line" ] && [ "$gate_line" -lt "$apply_line" ] && [ -f postern/.github/scripts/d1-migration-gate.mjs ]; then r=0; else r=1; fi; case_ deploy-gates-migrations "$r"

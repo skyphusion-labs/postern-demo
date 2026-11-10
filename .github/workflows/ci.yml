@@ -36,3 +36,35 @@ jobs:
           fails="$(echo "${line#@event suite }" | node -pe 'JSON.parse(require("fs").readFileSync(0)).fail')"
           echo "cases expected=$expected got=$got fail=$fails"
           [ "$got" = "$expected" ] && [ "$fails" = "0" ]
+  deploy:
+    # Deploys the demo Worker from main, only after ci and coverage pass on the same commit.
+    # PRs never deploy. One deploy at a time; a newer push waits rather than cancelling one mid-way.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [ci, coverage]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-demo
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - name: Migrate (gated) and deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npm run deploy
+      # Second, independent probe (behaviour, not metadata). The artifact check above is the
+      # one that can go red on a config-only push; this one confirms the served version.
+      - name: Read back /health and require the pinned version
+        run: |
+          want="$(tr -d '[:space:]' < POSTERN_VERSION)"; want="${want#v}"
+          for i in 1 2 3 4 5 6; do
+            got="$(curl -sS -m 10 https://demo.posternonline.com/health | node -pe 'JSON.parse(require("fs").readFileSync(0)).version' 2>/dev/null || true)"
+            echo "attempt $i: health version=$got want=$want"
+            [ "$got" = "$want" ] && exit 0
+            sleep 10
+          done
+          echo "demo did not report $want after deploy"; exit 1
