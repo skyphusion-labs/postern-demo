@@ -11,8 +11,10 @@ Cloudflare Workers Builds builds and deploys it on every push to `main`.
 1. **Build command:** `npm run build`. This runs `scripts/fetch.sh`. The script downloads the tag in
    `POSTERN_VERSION` from GitHub into `./postern`. It checks that the tarball's
    `inbound/package.json` version equals the pin, then runs `npm ci` in `postern/inbound`.
-2. **Deploy command:** `npm run deploy`. This applies pending D1 migrations to the demo database,
-   then runs `wrangler deploy` with `wrangler.jsonc` from this repo.
+2. **Deploy command:** `npm run deploy`. This runs `scripts/deploy.sh`, in the same order as
+   postern's own deploy: list pending D1 migrations, classify them with the release's
+   `.github/scripts/d1-migration-gate.mjs` (additive shapes apply; a destructive or unknown shape
+   fails the deploy before the database is touched), apply them, then `wrangler deploy`.
 
 ## Upgrade the demo
 
