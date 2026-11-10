@@ -1,0 +1,42 @@
+// The public postern demo. Source is the release pinned in POSTERN_VERSION, fetched into ./postern
+// by scripts/fetch.sh. Ids below are resource identifiers, not credentials; secrets live as Worker
+// secrets and are never in this repo.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "postern",
+  "main": "postern/inbound/src/index.ts",
+  "compatibility_date": "2025-05-05",
+  "account_id": "fabcb25d9c7eb087110ec474a03e50d2",
+  "observability": { "enabled": true },
+  "workers_dev": false,
+  "keep_vars": false,
+  "vars": {
+    "ALLOWED_FROM_DOMAIN": "posternonline.com",
+    "DEFAULT_FROM": "noreply@posternonline.com",
+    "DEFAULT_FROM_NAME": "Postern",
+    "OUTBOUND_TRANSPORT": "cf",
+    "TRUSTED_SENDER_DOMAINS": "",
+    "VECTORIZE_FOR": "",
+    "FORWARD_FOR": "",
+    "FORWARD_TO": "",
+    "FILE_ALSO_UNDER": "",
+    "POSTERN_VIEWER_ROLES": ""
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "postern",
+      "database_id": "b4712b8b-d376-48db-a810-7491106018fe",
+      "migrations_dir": "postern/inbound/migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "ATTACHMENTS", "bucket_name": "postern-attachments" }],
+  "vectorize": [{ "binding": "VECTORIZE", "index_name": "postern-vec" }],
+  "ai": { "binding": "AI" },
+  "send_email": [{ "name": "EMAIL" }],
+  "routes": [
+    { "pattern": "demo.posternonline.com", "custom_domain": true },
+    { "pattern": "posternonline.com", "custom_domain": true },
+    { "pattern": "www.posternonline.com", "custom_domain": true }
+  ]
+}

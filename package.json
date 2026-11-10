@@ -1,0 +1,15 @@
+{
+  "name": "postern-demo",
+  "private": true,
+  "description": "Deploys the public postern demo (demo.posternonline.com) from a pinned postern release.",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "build": "bash scripts/fetch.sh",
+    "migrate": "wrangler d1 migrations apply DB --remote",
+    "deploy": "wrangler d1 migrations apply DB --remote && wrangler deploy",
+    "check": "bash scripts/fetch.sh && wrangler deploy --dry-run --outdir .wrangler/dry"
+  },
+  "devDependencies": {
+    "wrangler": "4.158.0"
+  }
+}
