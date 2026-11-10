@@ -1,0 +1,38 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+      - run: shellcheck scripts/fetch.sh tests/run.sh
+      - run: bash tests/run.sh
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+      - name: Suite ran every case and every case passed
+        run: |
+          set -o pipefail
+          bash tests/run.sh | tee suite.log
+          line="$(grep '^@event suite ' suite.log || true)"
+          echo "$line"
+          [ -n "$line" ] || { echo "no suite summary: the suite did not run to the end"; exit 1; }
+          expected="$(grep -c '; case_ ' tests/run.sh)"
+          got="$(echo "${line#@event suite }" | node -pe 'JSON.parse(require("fs").readFileSync(0)).cases')"
+          fails="$(echo "${line#@event suite }" | node -pe 'JSON.parse(require("fs").readFileSync(0)).fail')"
+          echo "cases expected=$expected got=$got fail=$fails"
+          [ "$got" = "$expected" ] && [ "$fails" = "0" ]
