@@ -59,5 +59,18 @@ gate_line="$(grep -n 'd1-migration-gate.mjs postern/inbound/migrations' scripts/
 apply_line="$(grep -n 'migrations apply DB' scripts/deploy.sh | head -1 | cut -d: -f1)"
 if [ -n "$gate_line" ] && [ -n "$apply_line" ] && [ "$gate_line" -lt "$apply_line" ] && [ -f postern/.github/scripts/d1-migration-gate.mjs ]; then r=0; else r=1; fi; case_ deploy-gates-migrations "$r"
 
+# 9. The seed corpus is valid and the dry run plans every message (postern#837).
+node scripts/seed.mjs dry-run >/dev/null; case_ seed-dry-run "$?"
+
+# 10..17. Seeder decision paths against the fake demo API (tests/seed.test.mjs).
+node tests/seed.test.mjs corpus-valid; case_ seed-corpus-valid "$?"
+node tests/seed.test.mjs validator-catches-bad-corpus; case_ seed-validator-catches-bad-corpus "$?"
+node tests/seed.test.mjs seeds-empty-mailbox-and-threads; case_ seed-seeds-empty-mailbox-and-threads "$?"
+node tests/seed.test.mjs rerun-sends-nothing; case_ seed-rerun-sends-nothing "$?"
+node tests/seed.test.mjs restores-only-missing-and-rethreads; case_ seed-restores-only-missing "$?"
+node tests/seed.test.mjs reply-carries-parent-id-and-attachment; case_ seed-reply-carries-parent-id "$?"
+node tests/seed.test.mjs verify-fails-without-vectors; case_ seed-verify-fails-without-vectors "$?"
+node tests/seed.test.mjs seed-refuses-reply-without-parent-id; case_ seed-refuses-unthreaded-reply "$?"
+
 echo "@event suite {\"pass\":$pass,\"fail\":$fail,\"cases\":$((pass+fail))}"
 [ "$fail" -eq 0 ]
