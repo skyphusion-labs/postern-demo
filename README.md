@@ -4,7 +4,8 @@ Deploys the public [postern](https://github.com/skyphusion-labs/postern) demo at
 <https://demo.posternonline.com> (apex and `www` redirect to it).
 
 This repo holds no product code. It pins a postern release and carries the demo's Worker config.
-Cloudflare Workers Builds builds and deploys it on every push to `main`.
+GitHub Actions deploys it on every push to `main`, after `ci` and `coverage` pass on that commit
+(`deploy` job in `.github/workflows/ci.yml`). PRs never deploy.
 
 ## How a deploy works
 
@@ -21,8 +22,8 @@ Cloudflare Workers Builds builds and deploys it on every push to `main`.
 1. Open a PR that changes `POSTERN_VERSION` to the new tag (for example `v1.9.0`).
 2. If the new release adds a binding or a var, add it to `wrangler.jsonc` in the same PR. Compare
    with `inbound/wrangler.jsonc` at that tag.
-3. Merge. Workers Builds deploys `main`.
-4. Verify: `curl -sS https://demo.posternonline.com/health` reports the new version.
+3. Merge. The `deploy` job deploys `main` and fails unless `/health` reports the new version.
+4. Check by hand if you like: `curl -sS https://demo.posternonline.com/health`.
 
 ## Roll back
 
@@ -34,6 +35,9 @@ Read the release notes before you pin an older version over a newer schema.
 - `keep_vars` is `false`. Every var lives in `wrangler.jsonc`, not in the dashboard.
 - Secrets (`POSTERN_API_TOKEN_READ`) are Worker secrets. They never go in this repo. `wrangler
   deploy` keeps them.
+- The deploy credential is the repo secret `CLOUDFLARE_API_TOKEN`: a Cloudflare token scoped to
+  this account's Workers Scripts, D1, R2 and Vectorize read, and Workers Routes on
+  posternonline.com.
 - The ids in `wrangler.jsonc` are resource identifiers, not credentials.
 
 ## Check locally
