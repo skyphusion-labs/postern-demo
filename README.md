@@ -19,7 +19,10 @@ GitHub Actions deploys it on every push to `main`, after `ci` and `coverage` pas
 
 ## Upgrade the demo
 
-1. Open a PR that changes `POSTERN_VERSION` to the new tag (for example `v1.9.0`).
+1. Open a PR that changes `POSTERN_VERSION` to the new tag (for example `v1.9.0`) AND
+   `POSTERN_COMMIT` to the full 40-character sha that tag points at
+   (`git ls-remote https://github.com/skyphusion-labs/postern.git refs/tags/v1.9.0`). The
+   build fails if the two disagree, so change both in the same PR.
 2. If the new release adds a binding or a var, add it to `wrangler.jsonc` in the same PR. Compare
    with `inbound/wrangler.jsonc` at that tag.
 3. Merge. The `deploy` job deploys `main` and fails unless `/health` reports the new version.
@@ -27,8 +30,64 @@ GitHub Actions deploys it on every push to `main`, after `ci` and `coverage` pas
 
 ## Roll back
 
-Revert the PR that moved `POSTERN_VERSION` and merge the revert. A D1 migration does not roll back.
-Read the release notes before you pin an older version over a newer schema.
+The pin is two files, `POSTERN_VERSION` (the tag) and `POSTERN_COMMIT` (its sha). A rollback
+moves BOTH back, or `scripts/fetch.sh` refuses the build (`tag ... is at ..., pin is ...`).
+
+1. Revert the upgrade PR and merge the revert. The revert restores both files, because the
+   upgrade PR changed both.
+2. To roll back to a release other than the previous one, open a PR that sets
+   `POSTERN_VERSION` to that tag and `POSTERN_COMMIT` to its sha (`git ls-remote` as above).
+3. Check that `/health` reports the older version after the deploy job finishes.
+
+A D1 migration does not roll back. Read the release notes before you pin an older version
+over a newer schema.
+
+## Demo mail
+
+The demo mailbox holds a small, synthetic seed set: 30 messages in 14 threads, defined in
+`seed/corpus.mjs`. It has an 8-message thread, a support ticket with replies, an agent's
+digests, an invoice with a PDF, a newsletter, a calendar invite with an `.ics` file, account
+notices, an agent-to-agent handoff with a Markdown file, and a shipping notice. All people,
+companies, orders and codes in it are invented. Every message ends with a line that says so.
+
+**How it gets there: the real inbound path, never a database insert.** The `seed` workflow
+(`.github/workflows/seed.yml`) runs `scripts/seed.mjs send`. The script sends each message
+with the Cloudflare Email Sending REST API to an address on `posternonline.com`. Email Routing
+delivers it to the demo Worker's `email()` handler, and ingest, threading, FTS and Vectorize run
+exactly as they do for any sender. The REST API does not return the Message-ID it generates. So
+after each send the script reads the mailbox through the demo's read API until the message
+appears. That readback proves the message was stored, and it supplies the stored Message-ID
+that a reply puts in `In-Reply-To`. Threads are built by postern's own thread resolution.
+
+**When it runs.**
+
+- By hand: Actions, `seed`, Run workflow. `send` (the default) sends what is missing and then
+  verifies. `check` reports only. `verify` asserts only.
+- Weekly, Mondays 06:17 UTC. The script is idempotent. It skips a message that is already
+  stored (same sender address and subject, counted in order), so the weekly run sends nothing
+  unless the set was removed. The demo token is read-scoped, so visitors cannot delete mail.
+  The weekly run exists to restore the set after an operator wipe, and it costs one mailbox
+  read a week. It never deletes anything. The statement that nothing deletes demo
+  mail automatically (postern PRIVACY.md) still holds.
+- GitHub disables a scheduled workflow after 60 days without repository activity. If the
+  weekly run stops, re-enable it in the Actions tab.
+
+**What `verify` asserts** (it fails the run otherwise): every corpus message is present, every
+reply shares its parent's thread id, FTS search for `lifecycle` returns a hit, and a semantic
+search returns a hit (so Vectorize holds vectors).
+
+**Secrets** (repository secrets, never in this repo):
+
+- `CF_EMAIL_SEND_TOKEN`: a Cloudflare token that can only send through Email Sending on this
+  account. Only the `send` step sees it.
+- `POSTERN_DEMO_READ_TOKEN`: the demo's public read token, the one published in the postern
+  README.
+
+**Change the seed set.** Edit `seed/corpus.mjs`. `npm test` validates it: 20 to 40 messages,
+unique keys, a parent always comes before its reply, every address is on `posternonline.com`,
+and there are no em-dashes or en-dashes. A new message is sent on the next run. To replace an
+existing message, bump `SEED_VERSION` and change its subject; the old copy stays in the
+mailbox until an operator removes it.
 
 ## Rules
 

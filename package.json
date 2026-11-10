@@ -6,7 +6,8 @@
   "scripts": {
     "build": "bash scripts/fetch.sh",
     "deploy": "bash scripts/deploy.sh",
-    "check": "bash scripts/fetch.sh && wrangler deploy --dry-run --outdir .wrangler/dry"
+    "check": "bash scripts/fetch.sh && wrangler deploy --dry-run --outdir .wrangler/dry",
+    "test": "bash tests/run.sh"
   },
   "devDependencies": {
     "wrangler": "4.158.0"

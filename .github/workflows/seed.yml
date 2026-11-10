@@ -1,0 +1,45 @@
+name: seed
+# Seeds the public demo mailbox through the real inbound path (postern#837): Cloudflare Email
+# Sending -> Email Routing -> the demo Worker's email() handler -> ingest, FTS, Vectorize.
+# Idempotent: a message already in the mailbox is skipped, so the weekly run sends nothing
+# unless the seed set was removed. See README "Demo mail".
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "check: report only. send: send what is missing, then verify. verify: assert only."
+        type: choice
+        options: [send, check, verify]
+        default: send
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC: restore the seed set if it is missing.
+permissions:
+  contents: read
+concurrency:
+  group: seed-demo
+  cancel-in-progress: false
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      POSTERN_DEMO_READ_TOKEN: ${{ secrets.POSTERN_DEMO_READ_TOKEN }}
+      MODE: ${{ github.event_name == 'schedule' && 'send' || inputs.mode }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Validate the corpus
+        run: node scripts/seed.mjs dry-run
+      - name: Check
+        if: env.MODE == 'check'
+        run: node scripts/seed.mjs check
+      - name: Send what is missing
+        if: env.MODE == 'send'
+        env:
+          CF_EMAIL_SEND_TOKEN: ${{ secrets.CF_EMAIL_SEND_TOKEN }}
+        run: node scripts/seed.mjs send
+      - name: Verify the set, FTS and semantic search
+        if: env.MODE == 'send' || env.MODE == 'verify'
+        run: node scripts/seed.mjs verify
