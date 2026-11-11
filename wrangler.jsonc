@@ -35,8 +35,6 @@
   "ai": { "binding": "AI" },
   "send_email": [{ "name": "EMAIL" }],
   "routes": [
-    { "pattern": "demo.posternonline.com", "custom_domain": true },
-    { "pattern": "posternonline.com", "custom_domain": true },
-    { "pattern": "www.posternonline.com", "custom_domain": true }
+    { "pattern": "demo.posternonline.com", "custom_domain": true }
   ]
 }
