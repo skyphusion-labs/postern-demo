@@ -1,0 +1,25 @@
+name: version-check
+
+# postern#934: the demo pin fell six releases behind and nothing said so. This runs daily and goes
+# red while POSTERN_VERSION is not the latest postern release (scripts/version-check.mjs).
+# It is a scheduled check, not a pull_request one, so a new postern release never blocks an
+# unrelated demo PR. A release list it cannot read is a failure (exit 2), not a quiet day.
+on:
+  schedule:
+    - cron: "37 8 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: The demo is pinned to the latest postern release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/version-check.mjs

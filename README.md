@@ -28,6 +28,14 @@ GitHub Actions deploys it on every push to `main`, after `ci` and `coverage` pas
 3. Merge. The `deploy` job deploys `main` and fails unless `/health` reports the new version.
 4. Check by hand if you like: `curl -sS https://demo.posternonline.com/health`.
 
+## Daily version check
+
+`version-check.yml` runs daily (08:37 UTC) and by hand. It goes red while `POSTERN_VERSION` is not
+the latest postern release (`scripts/version-check.mjs`): the highest published `vX.Y.Z`, never a
+draft, a prerelease or a `postern-mcp-v*` release. A red run means: upgrade the demo (above). A
+release list it cannot read exits 2, which is a failure, not a quiet day. It is not a pull_request
+check, so a new postern release never blocks an unrelated demo PR.
+
 ## Roll back
 
 The pin is two files, `POSTERN_VERSION` (the tag) and `POSTERN_COMMIT` (its sha). A rollback
