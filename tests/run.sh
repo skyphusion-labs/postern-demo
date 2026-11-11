@@ -72,5 +72,12 @@ node tests/seed.test.mjs reply-carries-parent-id-and-attachment; case_ seed-repl
 node tests/seed.test.mjs verify-fails-without-vectors; case_ seed-verify-fails-without-vectors "$?"
 node tests/seed.test.mjs seed-refuses-reply-without-parent-id; case_ seed-refuses-unthreaded-reply "$?"
 
+# 18..22. Version check decision paths (tests/version-check.test.mjs, postern#934).
+node tests/version-check.test.mjs latest-is-numeric-and-skips-noise; case_ version-latest-numeric "$?"
+node tests/version-check.test.mjs pin-at-latest-passes; case_ version-pin-at-latest-passes "$?"
+node tests/version-check.test.mjs pin-behind-fails; case_ version-pin-behind-fails "$?"
+node tests/version-check.test.mjs unmeasurable-is-not-a-pass; case_ version-unmeasurable-not-a-pass "$?"
+node tests/version-check.test.mjs cli-exits-2-when-releases-unreadable; case_ version-cli-exit-codes "$?"
+
 echo "@event suite {\"pass\":$pass,\"fail\":$fail,\"cases\":$((pass+fail))}"
 [ "$fail" -eq 0 ]
