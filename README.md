@@ -21,7 +21,8 @@ GitHub Actions deploys it on every push to `main`, after `ci` and `coverage` pas
 
 1. Open a PR that changes `POSTERN_VERSION` to the new tag (for example `v1.9.0`) AND
    `POSTERN_COMMIT` to the full 40-character sha that tag points at
-   (`git ls-remote https://github.com/skyphusion-labs/postern.git refs/tags/v1.9.0`). The
+   (`git ls-remote https://github.com/skyphusion-labs/postern.git 'refs/tags/v1.9.0^{}'`; the
+   `^{}` line is the COMMIT; the plain tag line of an annotated tag is the tag object). The
    build fails if the two disagree, so change both in the same PR.
 2. If the new release adds a binding or a var, add it to `wrangler.jsonc` in the same PR. Compare
    with `inbound/wrangler.jsonc` at that tag.
