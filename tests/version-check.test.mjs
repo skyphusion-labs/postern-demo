@@ -2,7 +2,7 @@
 // Usage: node tests/version-check.test.mjs <case>. Exit 0 = pass.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { judge, latestTag } from "../scripts/version-check.mjs";
@@ -27,15 +27,20 @@ const cases = {
   },
   "cli-exits-2-when-releases-unreadable": () => {
     const dir = mkdtempSync(join(tmpdir(), "vc-"));
-    writeFileSync(join(dir, "POSTERN_VERSION"), "v1.14.0\n");
-    const cli = resolve("scripts/version-check.mjs");
-    const r = spawnSync(process.execPath, [cli, "--releases-json", join(dir, "missing.json")], { cwd: dir, encoding: "utf8" });
-    assert.equal(r.status, 2);
-    assert.match(r.stdout, /UNMEASURED/);
-    writeFileSync(join(dir, "rel.json"), JSON.stringify(RELEASES));
-    assert.equal(spawnSync(process.execPath, [cli, "--releases-json", join(dir, "rel.json")], { cwd: dir }).status, 0);
-    writeFileSync(join(dir, "POSTERN_VERSION"), "v1.8.0\n");
-    assert.equal(spawnSync(process.execPath, [cli, "--releases-json", join(dir, "rel.json")], { cwd: dir }).status, 1);
+    try {
+      writeFileSync(join(dir, "POSTERN_VERSION"), "v1.14.0\n");
+      const cli = resolve("scripts/version-check.mjs");
+      const r = spawnSync(process.execPath, [cli, "--releases-json", join(dir, "missing.json")], { cwd: dir, encoding: "utf8" });
+      assert.equal(r.status, 2);
+      assert.match(r.stdout, /UNMEASURED/);
+      writeFileSync(join(dir, "rel.json"), JSON.stringify(RELEASES));
+      assert.equal(spawnSync(process.execPath, [cli, "--releases-json", join(dir, "rel.json")], { cwd: dir }).status, 0);
+      writeFileSync(join(dir, "POSTERN_VERSION"), "v1.8.0\n");
+      assert.equal(spawnSync(process.execPath, [cli, "--releases-json", join(dir, "rel.json")], { cwd: dir }).status, 1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+    assert.equal(existsSync(dir), false);
   },
 };
 const name = process.argv[2];
