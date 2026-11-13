@@ -45,7 +45,9 @@ moves BOTH back, or `scripts/fetch.sh` refuses the build (`tag ... is at ..., pi
 1. Revert the upgrade PR and merge the revert. The revert restores both files, because the
    upgrade PR changed both.
 2. To roll back to a release other than the previous one, open a PR that sets
-   `POSTERN_VERSION` to that tag and `POSTERN_COMMIT` to its sha (`git ls-remote` as above).
+   `POSTERN_VERSION` to that tag and `POSTERN_COMMIT` to the PEELED commit of that tag: the
+   `^{}` line of `git ls-remote https://github.com/skyphusion-labs/postern.git 'refs/tags/<tag>^{}'`,
+   never the plain tag line (that is the tag object, and `scripts/fetch.sh` refuses it).
 3. Check that `/health` reports the older version after the deploy job finishes.
 
 A D1 migration does not roll back. Read the release notes before you pin an older version
